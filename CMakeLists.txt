@@ -18,4 +18,5 @@ include(Catch)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 #Add executable target
+add_executable(token_test ${CMAKE_CURRENT_SOURCE_DIR}/test/token_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/inc/token.hpp)
 
