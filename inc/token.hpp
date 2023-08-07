@@ -1,3 +1,6 @@
+#ifndef TOKE
+#define TOKE
+
 #include <functional>
 
 namespace slam {
@@ -42,4 +45,6 @@ private:
 };
 
 }
+
+#endif
 
