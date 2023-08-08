@@ -20,6 +20,9 @@ public:
 		closed_bracket,
 	};
 
+	// Tokens are not default constructible
+	token() = delete;
+
 	// For numbers
 	token( double val ): info_(type::number), value_(val) {}
 
@@ -41,7 +44,6 @@ private:
 	type info_;
 	std::function<double(double)> function_;
 	double value_;
-	token();
 };
 
 }
