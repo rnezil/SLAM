@@ -1,7 +1,7 @@
 #include "parse.hpp"
 
 int main(){
-	std::string input {"()()()="};
+	std::string input {"420sqrt="};
 	std::vector<slam::token> tokens {};
 	slam::tokenize( input, tokens );
 	

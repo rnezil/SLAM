@@ -5,6 +5,10 @@
 using toke = slam::token;
 
 int main(){
+	std::vector<toke> vec {};
+	vec.emplace_back(toke([](double d){return std::log10(d);}));
+	std::vector<toke>& vecref = vec;
+
 	toke val(69);
 	std::cout << "Number token: " <<
 		(val.info() == toke::type::number) <<

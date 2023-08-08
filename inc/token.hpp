@@ -19,7 +19,6 @@ public:
 	};
 
 	// Tokens are not default constructible
-	// or copyable
 	token() = delete;
 	token(const token&) = delete;
 	token& operator=(const token&) = delete;
@@ -27,23 +26,23 @@ public:
 	// Move constructor
 	token(token&& other): info_(other.info()), function_(nullptr) {
 		if( info() == type::number ){
-			function_ = new double(
-					*static_cast<const double* const>(
+			function_ = new double(std::move(
+					*static_cast<double*>(
 						other.function_
 						)
-					);
+					));
 		}else if( info() == type::unary_function ){
-			function_ = new std::function<double(double)>(
-					*static_cast<const std::function<double(double)>* const>(
+			function_ = new std::function<double(double)>(std::move(
+					*static_cast<std::function<double(double)>*>(
 						other.function_
 						)
-					);
+					));
 		}else if( info() == type::binary_function ){
-			function_ = new std::function<double(double,double)>(
-					*static_cast<const std::function<double(double,double)>* const>(
+			function_ = new std::function<double(double,double)>(std::move(
+					*static_cast<std::function<double(double,double)>*>(
 						other.function_
 						)
-					);
+					));
 		}
 	}
 
@@ -63,23 +62,23 @@ public:
 		
 		// Allocate new object and populate with old resources
 		if( info() == type::number ){
-			function_ = new double(
-					*static_cast<const double* const>(
+			function_ = new double(std::move(
+					*static_cast<double*>(
 						other.function_
 						)
-					);
+					));
 		}else if( info() == type::unary_function ){
-			function_ = new std::function<double(double)>(
-					*static_cast<const std::function<double(double)>* const>(
+			function_ = new std::function<double(double)>(std::move(
+					*static_cast<std::function<double(double)>*>(
 						other.function_
 						)
-					);
+					));
 		}else if( info() == type::binary_function ){
-			function_ = new std::function<double(double,double)>(
-					*static_cast<const std::function<double(double,double)>* const>(
+			function_ = new std::function<double(double,double)>(std::move(
+					*static_cast<std::function<double(double,double)>*>(
 						other.function_
 						)
-					);
+					));
 		}
 
 		// Return newly created object
@@ -89,7 +88,7 @@ public:
 	// Constructor for parentheses and dummy tokens
 	// Precondition: argument is type::open_paren,
 	// type_closed::paren, or type::dummy
-	token( type info ): info_(info), function_(nullptr) {}
+	token( type info ): info_(info) { function_ = nullptr; }
 
 	// Constructor for numbers
 	token( double val ): info_(type::number) {

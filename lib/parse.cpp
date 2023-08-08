@@ -5,7 +5,7 @@ namespace slam {
 // Lexer
 lex tokenize( const std::string& input, std::vector<token>& output ){
 	// Ensure fresh output container
-	output.clear();
+	//output.clear();
 
 	// Process input
 	auto iter = input.begin();
@@ -130,56 +130,71 @@ lex tokenize( const std::string& input, std::vector<token>& output ){
 							output.emplace_back(token([](double d){
 									return std::sin(d);
 									}));
+							break;
 					}else if( func == std::string("cos") ){
 							output.emplace_back(token([](double d){
 									return std::cos(d);
 									}));
+							break;
 					}else if( func == std::string("tan") ){
 							output.emplace_back(token([](double d){
 									return std::tan(d);
 									}));
+							break;
 					}else if( func == std::string("arcsin") ){
 							output.emplace_back(token([](double d){
 									return std::asin(d);
 									}));
+							break;
 					}else if( func == std::string("arccos") ){
 							output.emplace_back(token([](double d){
 									return std::acos(d);
 									}));
+							break;
 					}else if( func == std::string("arctan") ){
 							output.emplace_back(token([](double d){
 									return std::atan(d);
 									}));
+							break;
 					}else if( func == std::string("log") ){
 							output.emplace_back(token([](double d){
 									return std::log10(d);
 									}));
+							break;
 					}else if( func == std::string("lob") ){
 							output.emplace_back(token([](double d){
 									return std::log2(d);
 									}));
+							break;
 					}else if( func == std::string("ln") ){
 							output.emplace_back(token([](double d){
 									return std::log(d);
 									}));
+							break;
 					}else if( func == std::string("exp") ){
 							output.emplace_back(token([](double d){
 									return std::exp(d);
 									}));
+							break;
 					}else if( func == std::string("sqrt") ){
 							output.emplace_back(token([](double d){
 									return std::sqrt(d);
 									}));
+							break;
 					}else if( func == std::string("cbrt") ){
 							output.emplace_back(token([](double d){
 									return std::cbrt(d);
 									}));
+							break;
 					}else{
 						return lex::unknown_function_name;
 					}
 				}
 		}
 	}
+
+	// Naive return
+	return lex::success;
 }
 
 /*
