@@ -2,6 +2,9 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <iostream>
+#include <cmath>
+#include <cctype>
 
 namespace slam{
 	enum class lex{
@@ -15,22 +18,43 @@ namespace slam{
 		missing_binary_operand,
 	};
 
-	class tree;
-	struct tree::node;
 	class tree{
 		public:
+			struct node;
 			struct node{
 				// Node constructor
-				node( const token& data ): data_(data) {}
+				node(token&& toke): toke_(std::move(toke)) {}
 
 				// Nodes cannot be default constructed
 				node() = delete;
 
-				// Node data
-				token data_;
+				// Collapse a node
+				void collapse()
+{
+if( toke_.info() == token::type::unary_function )
+{
+toke_ = token(
+		(*static_cast<const std::function<double(double)>* const>(toke_.take()))(
+			(*static_cast<const double* const>((left_->toke_).take())))
+		);
+left_ = nullptr;
+right_ = nullptr;
+}
+else if( toke_.info() == token::type::binary_function )
+{
+toke_ = token(
+		(*static_cast<const std::function<double(double,double)>* const>(toke_.take()))(
+			(*static_cast<const double* const>((left_->toke_).take())),
+			(*static_cast<const double* const>((right_->toke_).take())))
+		);
+left_ = nullptr;
+right_ = nullptr;
+}
+				}
+						
 
-				// Parent node
-				std::unique_ptr<node> parent_;
+				// Token of the node
+				token toke_;
 
 				// Left subnode
 				std::unique_ptr<node> left_;
@@ -39,22 +63,19 @@ namespace slam{
 				std::unique_ptr<node> right_;
 			};
 
-			// Tree is not default constructible,
-			// copy constructible, move constructible,
-			// copy assignable, or move assignable
-			tree() = delete;
-			tree(const tree&) = delete;
-			tree(tree&&) = delete;
-			tree& operator=(const tree&) = delete;
-			tree& operator=(tree&&) = delete;
-
 			// Constructor
-			tree( const token& lowest_priority ): base_(lowest_priority) {}
+			tree(): base_(token(token::type::dummy)) {}
+
+			// Access root node
+			node& stump() { return base_; }
 		private:
-			// Base of the tree
+			// Root node
 			node base_;
 	};
 
 	lex tokenize( const std::string& input, std::vector<token>& output );
+
+//	void parse( std::vector<token>::const_iterator first,
+//			std::vector<token>::const_iterator last, tree::node& subject );
 }
 
