@@ -197,10 +197,146 @@ lex tokenize( const std::string& input, std::vector<token>& output ){
 	return lex::success;
 }
 
-/*
-void parse( std::vector<token>::const_iterator first,
-		std::vector<token>::const_iterator last, tree::node& subject ){
+
+void parse( std::vector<token>::iterator first,
+		std::vector<token>::iterator last, tree::node& massive ){
+	// Expression defined by [first, last)
+	if( last - first > 1 ){
+		// Containers and variables for metadata collection
+		// 	i to keep track of index
+		// 	d to keep track of parenthesis depth
+		std::vector<tree::metadata> unary_func_data {};
+		std::vector<tree::metadata> binary_func_data {};
+		int i = 0;
+		int d = 0;
+
+		// Collect some data
+		for( auto find = first; find != last; ++find ){
+			// Entering parentheses
+			if( (*find).info() == token::type::open_paren )
+				++d;
+
+			// Exiting parentheses
+			if( (*find).info() == token::type::closed_paren )
+				--d;
+
+			// Found a unary operator
+			if( (*find).info() == token::type::unary_function ){
+				unary_func_data.push_back(tree::metadata(i,d));
+			}
+
+			// Found a binary operator
+			if( (*find).info() == token::type::binary_function ){
+				binary_func_data.push_back(tree::metadata(i,d));
+			}
+
+			// Increment index
+			++i;
+		}
+
+		// Determine which operator has the lowest priority
+		tree::metadata binary_candidate(-1,0);
+		if( !binary_func_data.empty() ){
+			int current_lowest = binary_func_data.front().priority_;
+			for( auto b : binary_func_data ){
+				if( b.priority_ < current_lowest ){
+					current_lowest = b.priority_;
+				}
+			}
+
+			bool no_add_sub = true;
+			for( auto b : binary_func_data ){
+				if( (*(first + b.index_).info() == token::type::plus ||
+					*(first + b.index_).info() == token::type::minus) &&
+				 	b.priority_ == current_lowest ){
+					binary_candidate = b;
+					no_add_sub = false;
+					break;
+				}
+			}
+
+			if( no_add_sub ){
+				bool no_mul_div = true;
+				for( auto b : binary_func_data ){
+					if( (*(first + b.index_).info() ==
+							token::type::multiply
+							||
+						*(first + b.index_).info() ==
+							token::type::divide) &&
+							b.priority_ == current_lowest )
+					{
+						binary_candidate = b;
+						no_mul_div = false;
+						break;
+					}
+				}
+
+				if( no_mul_div ){
+					for( auto b : binary_func_data ){
+						if( *(first + b.index_).info() ==
+								token::type::exponent &&
+								b.priority_ == current_lowest )
+						{
+							binary_candidate = b;
+							break;
+						}
+					}
+				}
+
+			}
+		}
+		
+		tree::metadata unary_candidate(-1,0);
+		if( !unary_func_data.empty() ){
+			int current_lowest = unary_func_data.front().priority_;
+			unary_candidate = unary_func_data.front();
+			for( auto u : unary_func_data ){
+				if( u.priority_ < current_lowest ){
+					current_lowest = u.priority_;
+					unary_candidate = u;
+				}
+			}
+		}
+
+		// Select the winner
+		auto split = first;
+		if( unary_candidate.index_ == -1 ){
+			// No unary operators present in the expression
+			for( int k = 0; k < binary_candidate.index_; ++k ){
+				// Pick lowest priority binary operator
+				++split;
+			}
+		}else if( binary_candidate.index_ == -1 ){
+			// No binary operators present in the expression
+			for( int k = 0; k < unary_candidate.index_; ++k ){
+				// Pick lowest priority unary operator
+				++split;
+			}
+		}else if( unary_candidate.priority_ < binary_candidate.priority_ ){
+			// There exists a unary operator with lower priority
+			// than any binary operators present in the expression
+			for( int k = 0; k < unary_candidate.index_; ++k ){
+				++split;
+			}
+		}else{
+			// Lowest priority operation is binary
+			for( int k = 0; k < binary_candidate.index_; ++k ){
+				++split;
+			}
+		}
+
+		massive.toke_ = std::move(*split);
+		massive.left_ = std::make_unique<node>(token(token::type::dummy));
+		massive.right_ = std::make_unique<node>(token(token::type::dummy));
+		parse( first, split, massive.left_ );
+		parse( ++split, last, massive.right_ );
+	}
+
+	// Recursive node collapse leaves result in root node!
+	if( massive.toke_.info() != token::type::dummy ){
+		massive.collapse();
+	}
 }
-*/
+
 }
 

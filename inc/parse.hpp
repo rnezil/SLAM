@@ -20,15 +20,28 @@ namespace slam{
 
 	class tree{
 		public:
+			struct metadata{
+				const int index_;
+				int priority_;
+				metadata(int i, int p): index_(i), priority_(p) {}
+			};
+
 			struct node;
 			struct node{
 				// Node constructor
-				node(token&& toke): toke_(std::move(toke)) {}
+				node(token&& toke): toke_(std::move(toke)),
+			       		left_(nullptr), right_(nullptr)	{}
 
 				// Nodes cannot be default constructed
+				// or copied or moved
 				node() = delete;
+				node(const node&) = delete;
+				node& operator=(const node&) = delete;
+				node(node&&) = delete;
+				node& operator=(node&&) = delete;
 
-				// Collapse a node
+				// Collapse a node by computing operation
+				// defined by node and its subnode(s) then
 				void collapse()
 {
 if( toke_.info() == token::type::unary_function )
@@ -52,7 +65,6 @@ right_ = nullptr;
 }
 				}
 						
-
 				// Token of the node
 				token toke_;
 
@@ -75,7 +87,7 @@ right_ = nullptr;
 
 	lex tokenize( const std::string& input, std::vector<token>& output );
 
-//	void parse( std::vector<token>::const_iterator first,
-//			std::vector<token>::const_iterator last, tree::node& subject );
+	void parse( std::vector<token>::iterator first,
+			std::vector<token>::iterator last, tree::node& massive );
 }
 
