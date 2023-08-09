@@ -20,10 +20,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 #Add executable target
 add_executable(token_test ${CMAKE_CURRENT_SOURCE_DIR}/test/token_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/inc/token.hpp)
 add_executable(function_lexing ${CMAKE_CURRENT_SOURCE_DIR}/test/function_lexing.cpp ${CMAKE_CURRENT_SOURCE_DIR}/inc/parse.hpp ${CMAKE_CURRENT_SOURCE_DIR}/inc/print_token.hpp)
+add_executable(parse_test ${CMAKE_CURRENT_SOURCE_DIR}/test/parse_test.cpp ${CMAKE_CURRENT_SOURCE_DIR}/inc/parse.hpp)
 
 #Add library target
-add_library(parse ${CMAKE_CURRENT_SOURCE_DIR}/lib/parse.cpp)
+add_library(parser ${CMAKE_CURRENT_SOURCE_DIR}/lib/parse.cpp)
 
 #Link libraries
-target_link_libraries(function_lexing parse)
+target_link_libraries(function_lexing parser)
+target_link_libraries(parse_test parser)
 

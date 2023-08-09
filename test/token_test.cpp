@@ -22,7 +22,7 @@ int main(){
 		(*static_cast<const std::function<double(double)>* const>(log.take()))(1000) << '\n';
 
 
-	toke add([](double d1, double d2){return d1 + d2;});
+	toke add([](double d1, double d2){return d1 + d2;}, '+');
 	std::cout << "Binary add token: " <<
 		(add.info() == toke::type::binary_function) <<
 		". For input 999 and 338, returns: " <<

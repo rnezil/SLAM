@@ -35,31 +35,31 @@ lex tokenize( const std::string& input, std::vector<token>& output ){
 			case '^':
 				output.emplace_back(token([](double d1, double d2){
 							return std::pow(d1, d2);
-							}));
+							}, '^'));
 				++iter;
 				break;
 			case '*':
 				output.emplace_back(token([](double d1, double d2){
 							return d1 * d2;
-							}));
+							}, '*'));
 				++iter;
 				break;
 			case '/':
 				output.emplace_back(token([](double d1, double d2){
 							return d1 / d2;
-							}));
+							}, '/'));
 				++iter;
 				break;
 			case '+':
 				output.emplace_back(token([](double d1, double d2){
 							return d1 + d2;
-							}));
+							}, '+'));
 				++iter;
 				break;
 			case '-':
 				output.emplace_back(token([](double d1, double d2){
 							return d1 - d2;
-							}));
+							}, '-'));
 				++iter;
 				break;
 			default:
@@ -209,7 +209,7 @@ void parse( std::vector<token>::iterator first,
 		// 'sqrt( ... math and numbers ... )'
 		auto unary_begin = first;
 		++unary_begin;
-		if( (*first).info() == token::type::unary_operator &&
+		if( (*first).info() == token::type::unary_function &&
 				whole_things_wrapped_in_brackets( unary_begin, last ) ){
 			// Store operator token in AST node
 			massive.toke_ = std::move(*first);
@@ -221,13 +221,13 @@ void parse( std::vector<token>::iterator first,
 			}
 
 			// Only one recursion path for unary operators
-			massive.left_ = std::make_unique<node>(token(token::type::dummy));
+			massive.left_ = std::make_unique<tree::node>(token(token::type::dummy));
 			parse( unary_begin, last, *massive.left_ );
 		}else{
 			// Containers and variables for metadata collection
 			// 	i to keep track of index
 			// 	d to keep track of parenthesis depth
-			std::vector<tree::metadata> binary_func_data {};
+			std::vector<metadata> binary_func_data {};
 			int i = 0;
 			int d = 0;
 	
@@ -243,7 +243,7 @@ void parse( std::vector<token>::iterator first,
 	
 				// Found a binary operator
 				if( (*find).info() == token::type::binary_function ){
-					binary_func_data.push_back(tree::metadata(i,d));
+					binary_func_data.push_back(metadata(i,d));
 				}
 	
 				// Increment index
@@ -251,7 +251,7 @@ void parse( std::vector<token>::iterator first,
 			}
 
 			// Determine which operator has the lowest priority
-			tree::metadata binary_candidate = binary_func_data.front().priority_;
+			metadata binary_candidate = binary_func_data.front();
 			int current_lowest = binary_candidate.priority_;
 			for( auto b : binary_func_data ){
 				if( b.priority_ < current_lowest ){
@@ -261,8 +261,8 @@ void parse( std::vector<token>::iterator first,
 
 			bool no_add_sub = true;
 			for( auto b : binary_func_data ){
-				if( (*(first + b.index_).info() == token::type::plus ||
-					*(first + b.index_).info() == token::type::minus) &&
+				if( ((*(first + b.index_)).what() == '+' ||
+					(*(first + b.index_)).what() == '-') &&
 				 	b.priority_ == current_lowest ){
 					binary_candidate = b;
 					no_add_sub = false;
@@ -273,11 +273,8 @@ void parse( std::vector<token>::iterator first,
 			if( no_add_sub ){
 				bool no_mul_div = true;
 				for( auto b : binary_func_data ){
-					if( (*(first + b.index_).info() ==
-							token::type::multiply
-							||
-						*(first + b.index_).info() ==
-							token::type::divide) &&
+					if( ((*(first + b.index_)).what() == '*' ||
+						(*(first + b.index_)).what() == '/') &&
 							b.priority_ == current_lowest )
 					{
 						binary_candidate = b;
@@ -288,8 +285,7 @@ void parse( std::vector<token>::iterator first,
 
 				if( no_mul_div ){
 					for( auto b : binary_func_data ){
-						if( *(first + b.index_).info() ==
-								token::type::exponent &&
+						if( (*(first + b.index_)).what() == '^' &&
 								b.priority_ == current_lowest )
 						{
 							binary_candidate = b;
@@ -314,7 +310,7 @@ void parse( std::vector<token>::iterator first,
 				++left_begin;
 				--left_end;
 			}
-			massive.left_ = std::make_unique<node>(token(token::type::dummy));
+			massive.left_ = std::make_unique<tree::node>(token(token::type::dummy));
 			parse( left_begin, left_end, *massive.left_ );
 
 			// Right branch recursion
@@ -324,12 +320,19 @@ void parse( std::vector<token>::iterator first,
 				++right_begin;
 				--right_end;
 			}
-			massive.right_ = std::make_unique<node>(token(token::type::dummy));
+			massive.right_ = std::make_unique<tree::node>(token(token::type::dummy));
 			parse( right_begin, right_end, *massive.right_ );
 		}
+	}else if( last - first == 1 ){
+		// Reaching this point in the code
+		// indicates that the parse function
+		// was called on a number, therefore
+		// set the node token to that number
+		// token
+		massive.toke_ = std::move(*first);
 	}
 
-	// Recursive node collapse leaves result in root node!
+	// Speaks for itself
 	massive.collapse();
 }
 

@@ -24,7 +24,7 @@ public:
 	token& operator=(const token&) = delete;
 
 	// Move constructor
-	token(token&& other): info_(other.info()), function_(nullptr) {
+	token(token&& other): info_(other.info()), binop_(other.what()), function_(nullptr) {
 		if( info() == type::number ){
 			function_ = new double(std::move(
 					*static_cast<double*>(
@@ -50,6 +50,7 @@ public:
 	token& operator=(token&& other){
 		// Copy information
 		info_ = other.info();
+		binop_ = other.what();
 		
 		// Free memory allocated to this object
 		if( info() == type::number ){
@@ -88,10 +89,10 @@ public:
 	// Constructor for parentheses and dummy tokens
 	// Precondition: argument is type::open_paren,
 	// type_closed::paren, or type::dummy
-	token( type info ): info_(info) { function_ = nullptr; }
+	token( type info ): info_(info), function_(nullptr) {}
 
 	// Constructor for numbers
-	token( double val ): info_(type::number) {
+	token( double val ): info_(type::number), binop_('0') {
 		function_ = new double(val);
 	}
 
@@ -101,7 +102,8 @@ public:
 	}
 	
 	// Constructor for binary operators
-	token( std::function<double(double,double)>&& op ): info_(type::binary_function) {
+	token( std::function<double(double,double)>&& op, char what ):
+		info_(type::binary_function), binop_(what) {
 		function_ = new std::function<double(double,double)>(std::move(op));
 	}
 	
@@ -123,11 +125,15 @@ public:
 	// Return token type
 	type info() const { return info_; }
 
+	// Return binary operation key
+	char what() const { return binop_; }
+
 	// Return pointer to token-specific data
 	const void* const take() const { return function_; }
 private:
 	type info_;
 	void* function_;
+	char binop_;
 };
 
 }
