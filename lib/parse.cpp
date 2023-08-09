@@ -202,42 +202,57 @@ void parse( std::vector<token>::iterator first,
 		std::vector<token>::iterator last, tree::node& massive ){
 	// Expression defined by [first, last)
 	if( last - first > 1 ){
-		// Containers and variables for metadata collection
-		// 	i to keep track of index
-		// 	d to keep track of parenthesis depth
-		std::vector<tree::metadata> unary_func_data {};
-		std::vector<tree::metadata> binary_func_data {};
-		int i = 0;
-		int d = 0;
+		// Algorithm can be greatly simplified by acknowledging
+		// the fact that a unary operator can only have the
+		// lowest priority if it is operation on the entire rest
+		// of the expression, such as for an expression like
+		// 'sqrt( ... math and numbers ... )'
+		auto unary_begin = first;
+		++unary_begin;
+		if( (*first).info() == token::type::unary_operator &&
+				whole_things_wrapped_in_brackets( unary_begin, last ) ){
+			// Store operator token in AST node
+			massive.toke_ = std::move(*first);
 
-		// Collect some data
-		for( auto find = first; find != last; ++find ){
-			// Entering parentheses
-			if( (*find).info() == token::type::open_paren )
-				++d;
-
-			// Exiting parentheses
-			if( (*find).info() == token::type::closed_paren )
-				--d;
-
-			// Found a unary operator
-			if( (*find).info() == token::type::unary_function ){
-				unary_func_data.push_back(tree::metadata(i,d));
+			// De-parenthesize
+			while( whole_things_wrapped_in_brackets( unary_begin, last ) ){
+				++unary_begin;
+				--last;
 			}
 
-			// Found a binary operator
-			if( (*find).info() == token::type::binary_function ){
-				binary_func_data.push_back(tree::metadata(i,d));
+			// Only one recursion path for unary operators
+			massive.left_ = std::make_unique<node>(token(token::type::dummy));
+			parse( unary_begin, last, *massive.left_ );
+		}else{
+			// Containers and variables for metadata collection
+			// 	i to keep track of index
+			// 	d to keep track of parenthesis depth
+			std::vector<tree::metadata> binary_func_data {};
+			int i = 0;
+			int d = 0;
+	
+			// Collect some data
+			for( auto find = first; find != last; ++find ){
+				// Entering parentheses
+				if( (*find).info() == token::type::open_paren )
+					++d;
+	
+				// Exiting parentheses
+				if( (*find).info() == token::type::closed_paren )
+					--d;
+	
+				// Found a binary operator
+				if( (*find).info() == token::type::binary_function ){
+					binary_func_data.push_back(tree::metadata(i,d));
+				}
+	
+				// Increment index
+				++i;
 			}
 
-			// Increment index
-			++i;
-		}
-
-		// Determine which operator has the lowest priority
-		tree::metadata binary_candidate(-1,0);
-		if( !binary_func_data.empty() ){
-			int current_lowest = binary_func_data.front().priority_;
+			// Determine which operator has the lowest priority
+			tree::metadata binary_candidate = binary_func_data.front().priority_;
+			int current_lowest = binary_candidate.priority_;
 			for( auto b : binary_func_data ){
 				if( b.priority_ < current_lowest ){
 					current_lowest = b.priority_;
@@ -282,60 +297,40 @@ void parse( std::vector<token>::iterator first,
 						}
 					}
 				}
+			}
 
-			}
-		}
-		
-		tree::metadata unary_candidate(-1,0);
-		if( !unary_func_data.empty() ){
-			int current_lowest = unary_func_data.front().priority_;
-			unary_candidate = unary_func_data.front();
-			for( auto u : unary_func_data ){
-				if( u.priority_ < current_lowest ){
-					current_lowest = u.priority_;
-					unary_candidate = u;
-				}
-			}
-		}
+			// Procure lowest priority binary operator
+			auto split = first;
+			for( int k = 0; k < binary_candidate.index_; ++k )
+				++split;
+			
+			// Store operator token in AST node
+			massive.toke_ = std::move(*split);
 
-		// Select the winner
-		auto split = first;
-		if( unary_candidate.index_ == -1 ){
-			// No unary operators present in the expression
-			for( int k = 0; k < binary_candidate.index_; ++k ){
-				// Pick lowest priority binary operator
-				++split;
+			// Left branch recursion
+			auto left_begin = first;
+			auto left_end = split;
+			while( whole_things_wrapped_in_brackets( left_begin, left_end ) ){
+				++left_begin;
+				--left_end;
 			}
-		}else if( binary_candidate.index_ == -1 ){
-			// No binary operators present in the expression
-			for( int k = 0; k < unary_candidate.index_; ++k ){
-				// Pick lowest priority unary operator
-				++split;
-			}
-		}else if( unary_candidate.priority_ < binary_candidate.priority_ ){
-			// There exists a unary operator with lower priority
-			// than any binary operators present in the expression
-			for( int k = 0; k < unary_candidate.index_; ++k ){
-				++split;
-			}
-		}else{
-			// Lowest priority operation is binary
-			for( int k = 0; k < binary_candidate.index_; ++k ){
-				++split;
-			}
-		}
+			massive.left_ = std::make_unique<node>(token(token::type::dummy));
+			parse( left_begin, left_end, *massive.left_ );
 
-		massive.toke_ = std::move(*split);
-		massive.left_ = std::make_unique<node>(token(token::type::dummy));
-		massive.right_ = std::make_unique<node>(token(token::type::dummy));
-		parse( first, split, massive.left_ );
-		parse( ++split, last, massive.right_ );
+			// Right branch recursion
+			auto right_begin = ++split;
+			auto right_end = last;
+			while( whole_things_wrapped_in_brackets( right_begin, right_end ) ){
+				++right_begin;
+				--right_end;
+			}
+			massive.right_ = std::make_unique<node>(token(token::type::dummy));
+			parse( right_begin, right_end, *massive.right_ );
+		}
 	}
 
 	// Recursive node collapse leaves result in root node!
-	if( massive.toke_.info() != token::type::dummy ){
-		massive.collapse();
-	}
+	massive.collapse();
 }
 
 bool whole_things_wrapped_in_brackets( std::vector<token>::const_iterator first,

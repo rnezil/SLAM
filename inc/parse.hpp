@@ -42,8 +42,8 @@ namespace slam{
 
 				// Collapse a node by computing operation
 				// defined by node and its subnode(s) then
-				void collapse()
-{
+				void collapse(){
+
 if( toke_.info() == token::type::unary_function )
 {
 toke_ = token(
