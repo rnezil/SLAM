@@ -89,5 +89,8 @@ right_ = nullptr;
 
 	void parse( std::vector<token>::iterator first,
 			std::vector<token>::iterator last, tree::node& massive );
+
+	bool whole_things_wrapped_in_brackets( std::vector<token>::const_iterator first,
+			std::vector<token>::const_iterator last );
 }
 

@@ -338,5 +338,24 @@ void parse( std::vector<token>::iterator first,
 	}
 }
 
+bool whole_things_wrapped_in_brackets( std::vector<token>::const_iterator first,
+		std::vector<token>::const_iterator last ){
+	if( (*first).info() != token::type::open_paren ||
+			(*--last).info() != token::type::closed_paren ){
+		return false;
+	}else{
+		int count = 1;
+		while( ++first != last && count ){
+			if( (*first).info() == token::type::open_paren ){
+				++count;
+			}else if( (*first).info() == token::type::closed_paren ){
+				--count;
+			}
+		}
+
+		return first == last ? true : false;
+	}
+}
+
 }
 
