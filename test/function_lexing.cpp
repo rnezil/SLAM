@@ -1,9 +1,9 @@
-#include "parse.hpp"
+#include "ast.hpp"
 
 int main(){
 	std::string input {"420sqrt="};
 	std::vector<slam::token> tokens {};
-	slam::tokenize( input, tokens );
+	slam::lex( input, tokens );
 	
 	double d = 4761;
 

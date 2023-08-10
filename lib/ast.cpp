@@ -1,17 +1,16 @@
-#include "parse.hpp"
+#include "ast.hpp"
 
 namespace slam {
 
-// Lexer
-lex tokenize( const std::string& input, std::vector<token>& output ){
-	// Ensure fresh output container
-	//output.clear();
-
+lexer lex( const std::string& input, std::vector<token>& output ){
 	// Process input
 	auto iter = input.begin();
 	while( iter != input.end() )
 	{
 		switch(*iter){
+			case 'Q':
+				// Quit
+				return lexer::quit;
 			case ' ':
 				// Ignore whitespace
 				++iter;
@@ -19,10 +18,6 @@ lex tokenize( const std::string& input, std::vector<token>& output ){
 			case '\n':
 				// Ignore newline
 				++iter;
-				break;
-			case '=':
-				// End of expression
-				iter = input.end();
 				break;
 			case '(':
 				output.emplace_back(token(token::type::open_paren));
@@ -99,7 +94,7 @@ lex tokenize( const std::string& input, std::vector<token>& output ){
 					for( auto a : val ){
 						if( a == '.' ){
 							if( already_one_point ){
-								return lex::too_many_decimal_points;
+								return lexer::invalid_number;
 							}else{
 								already_one_point = true;
 							}
@@ -107,7 +102,7 @@ lex tokenize( const std::string& input, std::vector<token>& output ){
 					}
 
 					if( val.back() == '.' )
-						return lex::no_digits_after_decimal_point;
+						return lexer::invalid_number;
 					
 					// Convert string number to double and store
 					// token
@@ -144,12 +139,12 @@ lex tokenize( const std::string& input, std::vector<token>& output ){
 					}else if( func == std::string("arcsin") ){
 							output.emplace_back(token([](double d){
 									return std::asin(d);
-									}));
+									}, 's'));
 							break;
 					}else if( func == std::string("arccos") ){
 							output.emplace_back(token([](double d){
 									return std::acos(d);
-									}));
+									}, 'c'));
 							break;
 					}else if( func == std::string("arctan") ){
 							output.emplace_back(token([](double d){
@@ -159,17 +154,17 @@ lex tokenize( const std::string& input, std::vector<token>& output ){
 					}else if( func == std::string("log") ){
 							output.emplace_back(token([](double d){
 									return std::log10(d);
-									}));
+									}, 'l'));
 							break;
 					}else if( func == std::string("lob") ){
 							output.emplace_back(token([](double d){
 									return std::log2(d);
-									}));
+									}, 'l'));
 							break;
 					}else if( func == std::string("ln") ){
 							output.emplace_back(token([](double d){
 									return std::log(d);
-									}));
+									}, 'l'));
 							break;
 					}else if( func == std::string("exp") ){
 							output.emplace_back(token([](double d){
@@ -179,27 +174,116 @@ lex tokenize( const std::string& input, std::vector<token>& output ){
 					}else if( func == std::string("sqrt") ){
 							output.emplace_back(token([](double d){
 									return std::sqrt(d);
-									}));
+									}, 'r'));
 							break;
 					}else if( func == std::string("cbrt") ){
 							output.emplace_back(token([](double d){
 									return std::cbrt(d);
 									}));
 							break;
+					}else if( func == std::string("fac") ){
+							output.emplace_back(token([](double d){
+									while(d) d *= d--;
+									return d ? d : ++d;
+									}, 'f'));
+							break;
+					}else if( func == std::string("abs") ){
+							output.emplace_back(token([](double d){
+									return d < 0 ? -d : d;
+									}));
+							break;
 					}else{
-						return lex::unknown_function_name;
+						return lexer::unknown_function;
 					}
 				}
 		}
 	}
 
-	// Naive return
-	return lex::success;
+	// Perform some validity checks.
+
+	// Empty expression
+	if( !output.size() ){
+		return lexer::blank_expression;
+	}
+
+	// Starts with binary operator
+	if( output.front().info() == token::type::binary_function ){
+		return lexer::missing_binary_operand;
+	}
+
+	// Ends with binary operator
+	if( output.back().info() == token::type::binary_function ){
+		return lexer::missing_binary_operand;
+	}
+
+	// Ends with unary operator
+	if( output.back().info() == token::type::unary_function ){
+		return lexer::missing_unary_operand;
+	}
+
+	int paren = 0;
+	for( unsigned i = 0; i < output.size(); ++i ){
+		// Ensured every closed parenthesis is
+		// accompanied by an open parenthesis
+		if( output.at(i).info() == token::type::open_paren ) ++paren;
+		if( output.at(i).info() == token::type::closed_paren ) --paren;
+		if( paren < 0 ){
+			return lexer::unpaired_parentheses;
+		}
+
+		// Don't perform these checks on last token
+		if( i + 1 < output.size() ){
+			// Empty parentheses
+			if( output.at(i).info() == token::type::open_paren &&
+					output.at(i+1).info() == token::type::closed_paren ){
+				return lexer::empty_parentheses;
+			}
+
+			// Two numbers beside eachother
+			if( output.at(i).info() == token::type::number &&
+					output.at(i+1).info() == token::type::number ){
+				return lexer::missing_binary_operator;
+			}
+
+			// Unary operator lacks clearly defined target
+			if( output.at(i).info() == token::type::unary_function &&
+					output.at(i+1).info() != token::type::open_paren ){
+				return lexer::missing_unary_operand;
+			}
+
+			// Don't perform these checks on first or last token
+			if( i ){
+				// Binary operator missing operand(s)
+				if( output.at(i).info() == token::type::binary_function &&
+						( output.at(i-1).info() == token::type::binary_function
+						|| output.at(i-1).info() == token::type::open_paren
+						|| output.at(i+1).info() == token::type::binary_function
+						|| output.at(i+1).info() == token::type::closed_paren )
+					){
+					return lexer::missing_binary_operand;
+				}
+			}
+		}
+	}
+
+	// More open parentheses than closed parentheses
+	if( paren ){
+		return lexer::unpaired_parentheses;
+	}
+
+	// End of lexer validation process
+	return lexer::success;
 }
 
 
 void parse( std::vector<token>::iterator first,
 		std::vector<token>::iterator last, tree::node& massive ){
+	// Remove any redundant parentheses
+	while( whole_things_wrapped_in_brackets( first, last ) ){
+		++first;
+		--last;
+	}
+
 	// Expression defined by [first, last)
 	if( last - first > 1 ){
 		// Algorithm can be greatly simplified by acknowledging
@@ -213,12 +297,6 @@ void parse( std::vector<token>::iterator first,
 				whole_things_wrapped_in_brackets( unary_begin, last ) ){
 			// Store operator token in AST node
 			massive.toke_ = std::move(*first);
-
-			// De-parenthesize
-			while( whole_things_wrapped_in_brackets( unary_begin, last ) ){
-				++unary_begin;
-				--last;
-			}
 
 			// Only one recursion path for unary operators
 			massive.left_ = std::make_unique<tree::node>(token(token::type::dummy));
@@ -250,76 +328,109 @@ void parse( std::vector<token>::iterator first,
 				++i;
 			}
 
-			// Determine which operator has the lowest priority
-			metadata binary_candidate = binary_func_data.front();
-			int current_lowest = binary_candidate.priority_;
+			// Determine what the lowest priority is relative
+			// to parentheses
+			int current_lowest = binary_func_data.front().priority_;
+			std::vector<metadata> candidates {};
 			for( auto b : binary_func_data ){
-				if( b.priority_ < current_lowest ){
+				if( b.priority_ == current_lowest ){
+					// Add to list of candidates
+					candidates.push_back(b);
+				}else if( b.priority_ < current_lowest ){
+					// Trump all other candidates
 					current_lowest = b.priority_;
+					candidates.clear();
+					candidates.push_back(b);
 				}
 			}
 
-			bool no_add_sub = true;
-			for( auto b : binary_func_data ){
-				if( ((*(first + b.index_)).what() == '+' ||
-					(*(first + b.index_)).what() == '-') &&
-				 	b.priority_ == current_lowest ){
-					binary_candidate = b;
-					no_add_sub = false;
-					break;
-				}
-			}
+			/*
+			 * Binary Operator Precedence
+			 *
+			 * ^	2^2*7 = 28 not 16384
+			 * /	18/2*9 = 81 not 1
+			 * *	
+			 * -	15-5+10 = 20 not 0
+			 * +
+			 *
+			 */
 
-			if( no_add_sub ){
-				bool no_mul_div = true;
-				for( auto b : binary_func_data ){
-					if( ((*(first + b.index_)).what() == '*' ||
-						(*(first + b.index_)).what() == '/') &&
-							b.priority_ == current_lowest )
-					{
-						binary_candidate = b;
-						no_mul_div = false;
+			auto split = first;
+			if( candidates.size() == 1 ){
+				// One operator trumps all others
+				split = split + candidates.front().index_;
+			}else if( candidates.size() ){
+				// Multiple operators share the same
+				// priority so make choice based on
+				// operator precedence
+				bool choice = false;
+				for( auto c : candidates ){
+					if( (*(split + c.index_)).what() == '+' ){
+						split = split + c.index_;
+						choice = true;
 						break;
 					}
 				}
 
-				if( no_mul_div ){
-					for( auto b : binary_func_data ){
-						if( (*(first + b.index_)).what() == '^' &&
-								b.priority_ == current_lowest )
-						{
-							binary_candidate = b;
+				if( !choice ){
+					for( auto c : candidates ){
+						if( (*(split + c.index_)).what() == '-' ){
+							split = split + c.index_;
+							choice = true;
 							break;
 						}
 					}
 				}
+
+				if( !choice ){
+					for( auto c : candidates ){
+						if( (*(split + c.index_)).what() == '*' ){
+							split = split + c.index_;
+							choice = true;
+							break;
+						}
+					}
+				}
+
+				if( !choice ){
+					for( auto c : candidates ){
+						if( (*(split + c.index_)).what() == '/' ){
+							split = split + c.index_;
+							choice = true;
+							break;
+						}
+					}
+				}
+
+				if( !choice ){
+					for( auto c : candidates ){
+						if( (*(split + c.index_)).what() == '^' ){
+							split = split + c.index_;
+							choice = true;
+							break;
+						}
+					}
+				}
+
+				if( !choice ){
+					// throw parse exception
+				}
+			}else{
+				// throw parse exception
 			}
 
-			// Procure lowest priority binary operator
-			auto split = first;
-			for( int k = 0; k < binary_candidate.index_; ++k )
-				++split;
-			
 			// Store operator token in AST node
 			massive.toke_ = std::move(*split);
 
 			// Left branch recursion
 			auto left_begin = first;
 			auto left_end = split;
-			while( whole_things_wrapped_in_brackets( left_begin, left_end ) ){
-				++left_begin;
-				--left_end;
-			}
 			massive.left_ = std::make_unique<tree::node>(token(token::type::dummy));
 			parse( left_begin, left_end, *massive.left_ );
 
 			// Right branch recursion
 			auto right_begin = ++split;
 			auto right_end = last;
-			while( whole_things_wrapped_in_brackets( right_begin, right_end ) ){
-				++right_begin;
-				--right_end;
-			}
 			massive.right_ = std::make_unique<tree::node>(token(token::type::dummy));
 			parse( right_begin, right_end, *massive.right_ );
 		}
