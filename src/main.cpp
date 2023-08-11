@@ -128,6 +128,7 @@ int main(int argc, char** argv){
 		std::cout << "\t\t\t\t\tRyland Nezil 2023";
 		std::cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
 		std::cout << "\tWelcome to SLAM! To get started, enter an expression followed by an equals sign below:";
+		std::cout << "\n\t\t\t\t\t (Enter Q= to quit)";
 		if( !SLAM_radian ){
 			std::cout << "\n\n\t\t     WARNING: Degree mode does not produce reliable results.";
 		}

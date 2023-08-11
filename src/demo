@@ -1,0 +1,18 @@
+#Get the directory where this script is located
+SLAM_bin=$(dirname "$0")
+
+SLAM_interactive="$SLAM_bin/SLAM -i"
+
+echo "Running SLAM in interactive mode"
+sleep 2
+$SLAM_interactive
+
+echo " "
+echo " "
+echo " "
+
+echo "Setting variable x to value -1: x=\"(SLAM_install_path/bin/SLAM \"cos(pi)\")\""
+x="($SLAM_bin/SLAM \"cos(pi)\")"
+echo "Printing variable x: echo $x"
+echo $x
+
