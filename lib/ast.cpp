@@ -2,7 +2,7 @@
 
 namespace slam {
 
-lexer lex( const std::string& input, std::vector<token>& output ){
+lexer lex( const std::string& input, std::vector<token>& output, bool rad ){
 	// Process input
 	auto iter = input.begin();
 	while( iter != input.end() )
@@ -11,6 +11,10 @@ lexer lex( const std::string& input, std::vector<token>& output ){
 			case 'Q':
 				// Quit
 				return lexer::quit;
+			case '=':
+				// End fo expression
+				iter = input.end();
+				break;
 			case ' ':
 				// Ignore whitespace
 				++iter;
@@ -19,12 +23,22 @@ lexer lex( const std::string& input, std::vector<token>& output ){
 				// Ignore newline
 				++iter;
 				break;
+			case '.':
+				// Decimals must inputted as, for
+				// example, 0.1 instead of just .1
+				return lexer::invalid_number;
 			case '(':
 				output.emplace_back(token(token::type::open_paren));
 				++iter;
 				break;
 			case ')':
 				output.emplace_back(token(token::type::closed_paren));
+				++iter;
+				break;
+			case 'E':
+				output.emplace_back(token([](double d1, double d2){
+							return d1 * std::pow(10, d2);
+							}, 'E'));
 				++iter;
 				break;
 			case '^':
@@ -122,33 +136,57 @@ lexer lex( const std::string& input, std::vector<token>& output ){
 					}
 
 					if( func == std::string("sin") ){
-							output.emplace_back(token([](double d){
-									return std::sin(d);
+							output.emplace_back(token([rad](double d){
+									if(rad){
+										return std::sin(d);
+									}else{
+										return std::sin((d*double(180))/std::numbers::pi);
+									}
 									}));
 							break;
 					}else if( func == std::string("cos") ){
-							output.emplace_back(token([](double d){
-									return std::cos(d);
+							output.emplace_back(token([rad](double d){
+									if(rad){
+										return std::cos(d);
+									}else{
+										return std::cos((d*double(180))/std::numbers::pi);
+									}
 									}));
 							break;
 					}else if( func == std::string("tan") ){
-							output.emplace_back(token([](double d){
-									return std::tan(d);
+							output.emplace_back(token([rad](double d){
+									if(rad){
+										return std::tan(d);
+									}else{
+										return std::tan((d*double(180))/std::numbers::pi);
+									}
 									}));
 							break;
 					}else if( func == std::string("arcsin") ){
-							output.emplace_back(token([](double d){
-									return std::asin(d);
+							output.emplace_back(token([rad](double d){
+									if(rad){
+										return std::asin(d);
+									}else{
+										return (std::asin(d)*double(180))/std::numbers::pi;
+									}
 									}, 's'));
 							break;
 					}else if( func == std::string("arccos") ){
-							output.emplace_back(token([](double d){
-									return std::acos(d);
+							output.emplace_back(token([rad](double d){
+									if(rad){
+										return std::acos(d);
+									}else{
+										return (std::acos(d)*double(180))/std::numbers::pi;
+									}
 									}, 'c'));
 							break;
 					}else if( func == std::string("arctan") ){
-							output.emplace_back(token([](double d){
-									return std::atan(d);
+							output.emplace_back(token([rad](double d){
+									if(rad){
+										return std::atan(d);
+									}else{
+										return (std::atan(d)*double(180))/std::numbers::pi;
+									}
 									}));
 							break;
 					}else if( func == std::string("log") ){
@@ -183,14 +221,28 @@ lexer lex( const std::string& input, std::vector<token>& output ){
 							break;
 					}else if( func == std::string("fac") ){
 							output.emplace_back(token([](double d){
-									while(d) d *= d--;
-									return d ? d : ++d;
+									if(d){
+										unsigned w;
+										for( w = d-1; w; --w )
+											d *= w;
+										return d;
+									}else{
+										return ++d;
+									}	
 									}, 'f'));
 							break;
 					}else if( func == std::string("abs") ){
 							output.emplace_back(token([](double d){
 									return d < 0 ? -d : d;
 									}));
+							break;
+					}else if( func == std::string("neg") ){
+							output.emplace_back(token([](double d){
+									return -d;
+									}));
+							break;
+					}else if( func == std::string("pi") ){
+							output.emplace_back(token(std::numbers::pi));
 							break;
 					}else{
 						return lexer::unknown_function;
@@ -229,6 +281,18 @@ lexer lex( const std::string& input, std::vector<token>& output ){
 		if( output.at(i).info() == token::type::closed_paren ) --paren;
 		if( paren < 0 ){
 			return lexer::unpaired_parentheses;
+		}
+
+		// Don't perform these checks on first token
+		if( i ){
+			// Implicit multiplication
+			if( (output.at(i).info() == token::type::unary_function
+					|| output.at(i).info() == token::type::open_paren)
+					&&
+					(output.at(i-1).info() == token::type::number
+					 || output.at(i-1).info() == token::type::closed_paren)){
+				return lexer::missing_binary_operator;
+			}
 		}
 
 		// Don't perform these checks on last token
@@ -364,18 +428,18 @@ void parse( std::vector<token>::iterator first,
 				// priority so make choice based on
 				// operator precedence
 				bool choice = false;
-				for( auto c : candidates ){
-					if( (*(split + c.index_)).what() == '+' ){
-						split = split + c.index_;
+				for( auto c = candidates.rbegin(); c != candidates.rend(); ++c ){
+					if( (*(split + (*c).index_)).what() == '+' ){
+						split = split + (*c).index_;
 						choice = true;
 						break;
 					}
 				}
 
 				if( !choice ){
-					for( auto c : candidates ){
-						if( (*(split + c.index_)).what() == '-' ){
-							split = split + c.index_;
+					for( auto c = candidates.rbegin(); c != candidates.rend(); ++c ){
+						if( (*(split + (*c).index_)).what() == '-' ){
+							split = split + (*c).index_;
 							choice = true;
 							break;
 						}
@@ -383,9 +447,9 @@ void parse( std::vector<token>::iterator first,
 				}
 
 				if( !choice ){
-					for( auto c : candidates ){
-						if( (*(split + c.index_)).what() == '*' ){
-							split = split + c.index_;
+					for( auto c = candidates.rbegin(); c != candidates.rend(); ++c ){
+						if( (*(split + (*c).index_)).what() == '*' ){
+							split = split + (*c).index_;
 							choice = true;
 							break;
 						}
@@ -393,9 +457,9 @@ void parse( std::vector<token>::iterator first,
 				}
 
 				if( !choice ){
-					for( auto c : candidates ){
-						if( (*(split + c.index_)).what() == '/' ){
-							split = split + c.index_;
+					for( auto c = candidates.rbegin(); c != candidates.rend(); ++c ){
+						if( (*(split + (*c).index_)).what() == '/' ){
+							split = split + (*c).index_;
 							choice = true;
 							break;
 						}
@@ -403,9 +467,19 @@ void parse( std::vector<token>::iterator first,
 				}
 
 				if( !choice ){
-					for( auto c : candidates ){
-						if( (*(split + c.index_)).what() == '^' ){
-							split = split + c.index_;
+					for( auto c = candidates.rbegin(); c != candidates.rend(); ++c ){
+						if( (*(split + (*c).index_)).what() == '^' ){
+							split = split + (*c).index_;
+							choice = true;
+							break;
+						}
+					}
+				}
+				
+				if( !choice ){
+					for( auto c = candidates.rbegin(); c != candidates.rend(); ++c ){
+						if( (*(split + (*c).index_)).what() == 'E' ){
+							split = split + (*c).index_;
 							choice = true;
 							break;
 						}
@@ -413,10 +487,12 @@ void parse( std::vector<token>::iterator first,
 				}
 
 				if( !choice ){
-					// throw parse exception
+					// Parse algorithm failed to split expression
+					throw lexer::parse_failure;
 				}
 			}else{
-				// throw parse exception
+				// Parse algorithm failed to split expression
+				throw lexer::parse_failure;
 			}
 
 			// Store operator token in AST node
@@ -441,9 +517,12 @@ void parse( std::vector<token>::iterator first,
 		// set the node token to that number
 		// token
 		massive.toke_ = std::move(*first);
+	}else{
+		// Parse called with invalid iterators
+		throw lexer::parse_failure;
 	}
 
-	// Speaks for itself
+	// Recursive node collapse to compute result
 	massive.collapse();
 }
 

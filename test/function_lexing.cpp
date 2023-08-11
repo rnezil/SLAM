@@ -3,7 +3,7 @@
 int main(){
 	std::string input {"420sqrt="};
 	std::vector<slam::token> tokens {};
-	slam::lex( input, tokens );
+	slam::lex( input, tokens, false );
 	
 	double d = 4761;
 

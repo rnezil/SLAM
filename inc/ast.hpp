@@ -4,6 +4,7 @@
 #include <memory>
 #include <cmath>
 #include <cctype>
+#include <numbers>
 
 namespace slam{
 	enum class lexer{
@@ -22,6 +23,7 @@ namespace slam{
 		bad_sine,
 		bad_cosine,
 		bad_logarithm,
+		parse_failure,
 		quit,
 	};
 			
@@ -53,29 +55,38 @@ namespace slam{
 				void collapse(){
 					if( toke_.info() == token::type::unary_function )
 					{
+						// Check for square rooting negative number
 						if( toke_.what() == 'r' &&
 								(*static_cast<const double* const>((left_->toke_).take())) < double(0) )
 						{
 							throw lexer::bad_square_root;
 						}
 						else if( toke_.what() == 'f' &&
-								std::floor((*static_cast<const double* const>((left_->toke_).take()))) != (*static_cast<const double* const>((left_->toke_).take())) )
+								(std::floor((*static_cast<const double* const>((left_->toke_).take()))) != (*static_cast<const double* const>((left_->toke_).take())) || (*static_cast<const double* const>((left_->toke_).take())) < 0) )
 						{
+							// Check for factorializing non-whole
+							// or negative number
 							throw lexer::bad_factorial;
 						}
 						else if( toke_.what() == 's' &&
 								((*static_cast<const double* const>((left_->toke_).take())) < double(-1) || (*static_cast<const double* const>((left_->toke_).take())) > double(1)) )
 						{
+							// Check for out-of-range arcsine
+							// argument
 							throw lexer::bad_sine;
 						}
 						else if( toke_.what() == 'c' &&
 								((*static_cast<const double* const>((left_->toke_).take())) < double(-1) || (*static_cast<const double* const>((left_->toke_).take())) > double(1)) )
 						{
+							// Check for out-of-range arccosine
+							// argument
 							throw lexer::bad_cosine;
 						}
 						else if( toke_.what() == 'l' &&
 								(*static_cast<const double* const>((left_->toke_).take())) <= double(0) )
 						{
+							// Check for negative logarithm
+							// argument
 							throw lexer::bad_logarithm;
 						}
 
@@ -87,7 +98,7 @@ namespace slam{
 					}
 					else if( toke_.info() == token::type::binary_function )
 					{
-						// Ensure no division by zero
+						// Check for division by zero
 						if( toke_.what() == '/' &&
 								(*static_cast<const double* const>((right_->toke_).take())) == double(0) )
 						{
@@ -120,25 +131,23 @@ namespace slam{
 			node& stump() { return base_; }
 
 			// Get result of computation
-			double result() {
-				// Store result
-				double d = double(*static_cast<const double* const>(
-							(base_.toke_).take()));
+			double result() const { return double(*static_cast<const double* const>((base_.toke_).take())); }
 
-				// Reset the tree
+			// Reset the tree
+			bool reset() {
 				base_.toke_ = token(token::type::dummy);
 				base_.left_ = nullptr;
 				base_.right_ = nullptr;
-
-				// Return the result
-				return d;
+				return base_.toke_.info() == token::type::dummy &&
+					base_.left_ == nullptr &&
+					base_.right_ == nullptr;
 			}
 		private:
 			// Root node
 			node base_;
 	};
 
-	lexer lex( const std::string& input, std::vector<token>& output );
+	lexer lex( const std::string& input, std::vector<token>& output, bool rad );
 
 	void parse( std::vector<token>::iterator first,
 			std::vector<token>::iterator last, tree::node& massive );
