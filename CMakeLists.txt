@@ -8,20 +8,13 @@ project(SLAM LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
-#Find Catch2 package
-find_package(Catch2 REQUIRED)
-
-#Include Catch header
-include(Catch)
-
-#Include code sanitizers
-include(${CMAKE_CURRENT_SOURCE_DIR}/Sanitizers.cmake)
-
 #Create some variables for future convenience
 set(SLAM_include ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-set(SLAM_library ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 set(SLAM_source ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(SLAM_test ${CMAKE_CURRENT_SOURCE_DIR}/test)
+set(SLAM_test ${CMAKE_CURRENT_SOURCE_DIR}/src/test)
+
+#Include code sanitizers
+include(${SLAM_include}/Sanitizers.cmake)
 
 #Globally include 'include' directory
 include_directories(${SLAM_include})
@@ -33,10 +26,19 @@ add_executable(function_lexing ${SLAM_test}/function_lexing.cpp)
 add_executable(parse_test ${SLAM_test}/parse_test.cpp)
 
 #Add AST library target
-add_library(AST ${SLAM_library}/ast.cpp)
+add_library(AST ${SLAM_source}/ast.cpp)
 
 #Link executables with AST library
 target_link_libraries(SLAM AST)
 target_link_libraries(function_lexing AST)
 target_link_libraries(parse_test AST)
+
+#Install the SLAM program
+install(TARGETS SLAM DESTINATION ${CMAKE_INSTALL_PREFIX}bin)
+
+#Install the SLAM library
+install(TARGETS AST DESTINATION ${CMAKE_INSTALL_PREFIX}lib)
+
+#Install the demo script
+#install(PROGRAMS demo DESTINATION ${CMAKE_INSTALL_PREFIX}bin)
 
