@@ -10,7 +10,8 @@ int main(int argc, char** argv){
 	bool SLAM_debug = false;
 	bool SLAM_interactive = false;
 	bool SLAM_radian = true;
-	int SLAM_precision = 0;
+	bool SLAM_precision = false;
+	int precision = 0;
 
 	// Failure condition
 	if( argc == 1 ){
@@ -51,8 +52,35 @@ int main(int argc, char** argv){
 				}
 			case 'p':
 				if( *(*(argv+options)+2) == '=' ){
-					//try string to int
-					break;
+					if( *(*(argv+options+3)) == '\0' ){
+						std::cerr << "SLAM user error: \"" <<
+							*(argv+options) <<
+							"\" is not a valid option\n";
+						return 1;
+					}else{
+						std::string prec {};
+						for( int G = 3; *(*(argv+options)+G) != '\0'; ++G ){
+							prec += *(*(argv+options)+G);
+						}
+
+						try{
+							precision = std::stoi(prec);
+							if( precision > 15 ){
+								std::cerr << "SLAM user error: precision \"" << *(argv+options) << "\" is too large -- using default precision instead\n";
+							}else if( precision < 0 ){
+								std::cerr << "SLAM user error: \"" << *(argv+options) << "\" gives a negative precision value -- using default precision instead\n";
+							}else{
+								SLAM_precision = true;
+							}
+						}catch( const std::invalid_argument& e ){
+							std::cerr << "SLAM user error: \"" <<
+								*(argv+options) << "\" is not a valid option\n";
+						}catch( const std::out_of_range& e ){
+							std::cerr << "SLAM user error: precision \"" <<
+								*(argv+options) << "\" is too large -- using default precision instead\n";
+						}
+						break;
+					}
 				}else{
 					std::cerr << "SLAM user error: \"" <<
 						*(argv+options) << "\" is not a valid option\n";
@@ -140,12 +168,49 @@ int main(int argc, char** argv){
 				}
 
 				// Print result from calculation
-				if( SLAM_interactive ){
-					std::cout << "\n\t\t\t";
-					std::cout << calculator.result();
-					std::cout << "\n\n\n";
+				if( SLAM_precision ){
+					// Format result to specified precision
+					std::string formatted_result = std::to_string(calculator.result());
+					bool has_fractional = false;
+					int fractional_part = 0;
+					for( auto dig : formatted_result ){
+						// Count how many fractional digits
+						if( has_fractional ){
+							++fractional_part;
+						}
+
+						// Find position of decimal point
+						if( dig == '.' ){
+							has_fractional = true;
+						}
+					}
+
+					// Chop extra digits off if necessary
+					if( has_fractional ){
+						if( fractional_part > precision ){
+							for( fractional_part; fractional_part != precision; --fractional_part ){
+								formatted_result.pop_back();
+							}
+						}
+					}
+
+					// Output formatted result
+					if( SLAM_interactive ){
+						std::cout << "\n\t\t\t";
+						std::cout << formatted_result;
+						std::cout << "\n\n\n";
+					}else{
+						std::cout << formatted_result;
+					}
 				}else{
-					std::cout << calculator.result();
+					// Output result with native precision
+					if( SLAM_interactive ){
+						std::cout << "\n\t\t\t";
+						std::cout << calculator.result();
+						std::cout << "\n\n\n";
+					}else{
+						std::cout << calculator.result();
+					}
 				}
 			}catch( const slam::lexer parse_error ){
 				if( parse_error == slam::lexer::bad_division ){

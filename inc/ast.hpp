@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cctype>
 #include <numbers>
+#include <stdexcept>
 
 namespace slam{
 	enum class lexer{
