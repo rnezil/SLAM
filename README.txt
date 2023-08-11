@@ -92,7 +92,9 @@ following:
 	SLAM_install_path/bin/SLAM -p=6
 
 where SLAM_install_path represents the directory where SLAM has been
-installed to.
+installed to. Using the precision option has the secondary effect
+of turning off scientific notation output formatting, which is the
+default output format when no precision is specified.
 
 The option to use degrees instead of radians is buggy and exists
 primarily for the sake of existing. Due to the nature of floating
