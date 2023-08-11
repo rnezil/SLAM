@@ -34,10 +34,10 @@ target_link_libraries(function_lexing AST)
 target_link_libraries(parse_test AST)
 
 #Install the SLAM program
-install(TARGETS SLAM DESTINATION ${CMAKE_INSTALL_PREFIX}bin)
+install(TARGETS SLAM DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 #Install the SLAM library
-install(TARGETS AST DESTINATION ${CMAKE_INSTALL_PREFIX}lib)
+install(TARGETS AST DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 #Install the demo script
 #install(PROGRAMS demo DESTINATION ${CMAKE_INSTALL_PREFIX}bin)
