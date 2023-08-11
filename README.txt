@@ -1,7 +1,7 @@
 Let $TOP_DIR denote the directory containing this README file,
 and let $INSTALL_DIR denote the directory into which this
 software is to be installed. TO build and install the software,
-use the following commands:
+use the following commands: 
 
 	cd $TOP_DIR
 	cmake -H. -Btmp -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR
